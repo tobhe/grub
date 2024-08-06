@@ -1,6 +1,7 @@
 /*
  *  GRUB  --  GRand Unified Bootloader
  *  Copyright (C) 2013  Free Software Foundation, Inc.
+ *  Copyright (C) 2024  Canonical, Ltd.
  *
  *  GRUB is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -499,6 +500,92 @@ int grub_fdt_set_prop (void *fdt, unsigned int nodeoffset, const char *name,
 
   grub_memcpy (prop + 3, val, len);
   return 0;
+}
+
+static int
+prop_isstring (const unsigned char *str, grub_uint32_t len)
+{
+  grub_uint32_t i;
+  int is_nonzero = 0;
+
+  if (!len || str[len - 1])
+    return 0;
+
+  for (i = 0; i < len; i++)
+    {
+      if (!str[i])
+        {
+          if (!is_nonzero)
+            return 0;
+
+          is_nonzero = 0;
+          continue;
+        }
+      if (!grub_isprint (str[i]))
+        return 0;
+
+      is_nonzero = 1;
+    }
+  return 1;
+}
+
+char *
+grub_fdt_prop_to_string (const unsigned char *val, grub_uint32_t len)
+{
+  char *str;
+  int pos, slen;
+  grub_uint32_t i;
+
+  if (prop_isstring (val, len))
+    {
+      /* string */
+      return grub_strdup ((const char *)val);
+    }
+  else if (len & 0x3)
+    {
+      /* byte string */
+      grub_printf ("[");
+
+      slen = (len * 3) + 2;
+      str = grub_malloc (slen);
+      if (str == NULL)
+        return NULL;
+
+      pos = 0;
+      str[pos++] = '[';
+      for (i = 0; i < len; i++)
+        {
+          pos += grub_snprintf (&str[pos], slen - pos, "%02x", val[i]);
+          if (i != len - 1)
+            str[pos++] = ' ';
+        }
+      str[pos++] = ']';
+      str[pos] = '\0';
+    }
+  else
+    {
+      /* cell list */
+      const grub_uint32_t *cell = (const grub_uint32_t *)val;
+
+      slen = (len * 11) + 2;
+      str = grub_malloc (slen);
+      if (str == NULL)
+        return NULL;
+
+      pos = 0;
+      str[pos++] = '<';
+      for (i = 0, len /= 4; i < len; i++)
+        {
+          pos += grub_snprintf (&str[pos], slen - pos, "0x%08x",
+                                grub_be_to_cpu32 (cell[i]));
+          if (i != len - 1)
+            str[pos++] = ' ';
+        }
+      str[pos++] = '>';
+      str[pos] = '\0';
+    }
+
+  return str;
 }
 
 int

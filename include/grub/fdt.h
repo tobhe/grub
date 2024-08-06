@@ -118,6 +118,9 @@ EXPORT_FUNC(grub_fdt_get_nodename) (const void *fdt, unsigned int nodeoffset);
 const void *EXPORT_FUNC(grub_fdt_get_prop) (const void *fdt, unsigned int nodeoffset, const char *name,
 					    grub_uint32_t *len);
 
+char *EXPORT_FUNC(grub_fdt_prop_to_string) (const unsigned char *val,
+                                            grub_uint32_t len);
+
 int EXPORT_FUNC(grub_fdt_set_prop) (void *fdt, unsigned int nodeoffset, const char *name,
 				    const void *val, grub_uint32_t len);
 #define grub_fdt_set_prop32(fdt, nodeoffset, name, val)	\

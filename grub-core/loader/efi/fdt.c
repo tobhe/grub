@@ -183,8 +183,10 @@ grub_cmd_fdtdump (grub_extcmd_context_t ctxt,
                  char **argv __attribute__ ((unused)))
 {
   struct grub_arg_list *state = ctxt->state;
-  const char *value = NULL;
+  const unsigned char *value = NULL;
+  char *str;
   void *fw_fdt;
+  grub_uint32_t len;
 
   fw_fdt = grub_efi_get_firmware_fdt ();
   if (fw_fdt == NULL)
@@ -192,17 +194,22 @@ grub_cmd_fdtdump (grub_extcmd_context_t ctxt,
                          N_("No device tree found"));
 
   if (state[0].set)
-      value = grub_fdt_get_prop (fw_fdt, 0, state[0].arg, NULL);
+      value = grub_fdt_get_prop (fw_fdt, 0, state[0].arg, &len);
 
   if (value == NULL)
     return grub_error (GRUB_ERR_OUT_OF_RANGE,
                        N_("failed to retrieve the prop field"));
 
-  if (state[1].set)
-    grub_env_set (state[1].arg, value);
-  else
-    grub_printf ("%s\n", value);
+  str = grub_fdt_prop_to_string (value, len);
+  if (str == NULL)
+    return grub_error (GRUB_ERR_IO, N_("Failed to print string"));
 
+  if (state[1].set)
+    grub_env_set (state[1].arg, str);
+  else
+    grub_printf ("%s", str);
+
+  grub_free (str);
   return GRUB_ERR_NONE;
 }
 
