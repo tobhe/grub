@@ -4909,13 +4909,17 @@ such as @code{if} and @code{while} (@pxref{Shell-like scripting}).
 @subsection fdtdump
 
 @deffn Command fdtdump @
+ [@option{--node} @var{node}] @
  [@option{--prop} @var{prop}] @
  [@option{--set} @var{variable}]
 Retrieve device tree information.
 
 The @command{fdtdump} command returns the value of a property in the device
 tree provided by the firmware.  The @option{--prop} option determines which
-property to select.
+property to select. By default fdtdump returns properties from the root of
+the device tree unless a different @var{node} is specified with the
+@option{--node} option. @var{node} can be the name of a root subnode or a path
+from the root separated by '/' for deeper nested nodes.
 
 The default action is to print the value of the requested field to the console,
 but a variable name can be specified with @option{--set} to store the value

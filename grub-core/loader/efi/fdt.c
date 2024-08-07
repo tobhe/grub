@@ -40,6 +40,7 @@ static void *fdt;
                              sizeof (FDT_SIZE_CELLS_STRING))
 
 static const struct grub_arg_option options_fdtdump[] = {
+  {"node",	'n', 0, N_("Device tree node."), N_("node"), ARG_TYPE_STRING},
   {"prop",	'p', 0, N_("Get property."), N_("prop"), ARG_TYPE_STRING},
   {"set",       '\0', 0, N_("Store the value in the given variable name."),
                          N_("variable"), ARG_TYPE_STRING},
@@ -184,17 +185,34 @@ grub_cmd_fdtdump (grub_extcmd_context_t ctxt,
 {
   struct grub_arg_list *state = ctxt->state;
   const unsigned char *value = NULL;
-  char *str;
+  char *node_name, *str, *p;
   void *fw_fdt;
   grub_uint32_t len;
+  int node = 0;
 
   fw_fdt = grub_efi_get_firmware_fdt ();
   if (fw_fdt == NULL)
-      return grub_error (GRUB_ERR_IO,
-                         N_("No device tree found"));
+    return grub_error (GRUB_ERR_IO, N_("No device tree found"));
 
   if (state[0].set)
-      value = grub_fdt_get_prop (fw_fdt, 0, state[0].arg, &len);
+    {
+      node_name = state[0].arg;
+      while ((p = grub_strchr (node_name, '/')) != NULL) {
+        *p = '\0';
+
+        node = grub_fdt_find_subnode (fw_fdt, node, node_name);
+        if (node < 1)
+          return grub_error (GRUB_ERR_IO, N_("failed to find node in fdt"));
+
+        node_name = ++p;
+      }
+      node = grub_fdt_find_subnode (fw_fdt, node, node_name);
+      if (node < 1)
+        return grub_error (GRUB_ERR_IO, N_("failed to find node in fdt"));
+    }
+
+  if (state[1].set)
+    value = grub_fdt_get_prop (fw_fdt, node, state[1].arg, &len);
 
   if (value == NULL)
     return grub_error (GRUB_ERR_OUT_OF_RANGE,
@@ -204,8 +222,8 @@ grub_cmd_fdtdump (grub_extcmd_context_t ctxt,
   if (str == NULL)
     return grub_error (GRUB_ERR_IO, N_("Failed to print string"));
 
-  if (state[1].set)
-    grub_env_set (state[1].arg, str);
+  if (state[2].set)
+    grub_env_set (state[2].arg, str);
   else
     grub_printf ("%s", str);
 
@@ -220,7 +238,7 @@ GRUB_MOD_INIT (fdt)
 {
   cmd_fdtdump =
     grub_register_extcmd ("fdtdump", grub_cmd_fdtdump, 0,
-                          N_("[-p] [--set variable]"),
+                          N_("[-n] [-p] [--set variable]"),
                           N_("Retrieve device tree information."),
                           options_fdtdump);
   cmd_devicetree =
